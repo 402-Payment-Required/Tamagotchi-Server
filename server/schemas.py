@@ -66,3 +66,27 @@ class MissionCompleteRequest(BaseModel):
 class MissionCompleteResponse(BaseModel):
     mission_id: str
     status: MissionStatus
+
+
+class VoiceStartRequest(BaseModel):
+    user_id: str
+
+
+class VoiceStartResponse(BaseModel):
+    session_id: str
+
+
+class VoiceChatResponse(BaseModel):
+    audio: str  # base64 encoded WAV
+    reply: str
+    emotion: Emotion
+    signals: dict = {}
+
+
+class VoiceEndRequest(BaseModel):
+    user_id: str
+    session_id: str
+
+
+class VoiceEndResponse(BaseModel):
+    status: str

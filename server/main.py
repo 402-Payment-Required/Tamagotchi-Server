@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from chat.router import router as chat_router
+from chat.voice_router import router as voice_router
 from db import init_db
 from mission.router import router as mission_router
 from report.router import router as report_router
@@ -13,6 +14,7 @@ app.add_middleware(
 
 init_db()
 
+app.include_router(voice_router)
 app.include_router(chat_router)
 app.include_router(mission_router)
 app.include_router(report_router)
