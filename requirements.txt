@@ -61,7 +61,6 @@ colorama==0.4.6 ; sys_platform == 'win32'
     # via
     #   click
     #   loguru
-    #   pytest
     #   tqdm
     #   typer
 cryptography==49.0.0
@@ -177,9 +176,7 @@ httpx==0.28.1
     #   anthropic
     #   gradio
     #   gradio-client
-    #   ollama
     #   safehttpx
-    #   sonju-server
 huggingface-hub==0.36.2
     # via
     #   cached-path
@@ -196,8 +193,6 @@ inflect==7.0.0
     # via
     #   g2p-en
     #   melotts
-iniconfig==2.3.0
-    # via pytest
 jaconv==0.5.0
     # via pykakasi
 jamo==0.4.1
@@ -324,8 +319,6 @@ nvidia-nvshmem-cu13==3.4.5 ; sys_platform == 'linux'
     # via torch
 nvidia-nvtx==13.0.85 ; (platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')
     # via cuda-toolkit
-ollama==0.6.2
-    # via sonju-server
 onnxruntime==1.27.0
     # via faster-whisper
 orjson==3.11.9
@@ -339,7 +332,6 @@ packaging==26.2
     #   librosa
     #   onnxruntime
     #   pooch
-    #   pytest
     #   transformers
 pandas==2.3.3 ; python_full_version >= '3.14'
     # via gradio
@@ -351,8 +343,6 @@ plac==1.4.5
     # via unidic
 platformdirs==4.10.1
     # via pooch
-pluggy==1.6.0
-    # via pytest
 pooch==1.9.0
     # via librosa
 proces==0.1.7
@@ -380,7 +370,6 @@ pydantic==2.13.4
     #   fastapi
     #   gradio
     #   inflect
-    #   ollama
     #   sonju-server
 pydantic-core==2.46.4
     # via pydantic
@@ -389,15 +378,11 @@ pydub==0.25.1
     #   gradio
     #   melotts
 pygments==2.20.0
-    # via
-    #   pytest
-    #   rich
+    # via rich
 pykakasi==2.2.1
     # via melotts
 pypinyin==0.50.0
     # via melotts
-pytest==9.1.1
-    # via sonju-server
 python-crfsuite==0.9.12
     # via gruut
 python-dateutil==2.9.0.post0
