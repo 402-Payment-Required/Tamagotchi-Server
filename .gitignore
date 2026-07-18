@@ -6,3 +6,8 @@ __pycache__/
 venv/
 .DS_Store
 .idea/
+
+# 테스트 산출물
+*.wav
+test_tts_output.*
+response.json
