@@ -1,12 +1,14 @@
 import datetime
-import sqlite3
-from pathlib import Path
+import os
 
-DB_PATH = Path(__file__).parent / "sonju.db"
+import psycopg2
+import psycopg2.extras
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 
 def get_conn():
-    return sqlite3.connect(DB_PATH)
+    return psycopg2.connect(DATABASE_URL)
 
 
 def init_db():
@@ -18,11 +20,11 @@ def init_db():
     )
     c.execute(
         "CREATE TABLE IF NOT EXISTS signals("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, type TEXT, value TEXT, ts TEXT)"
+        "id SERIAL PRIMARY KEY, user_id TEXT, type TEXT, value TEXT, ts TEXT)"
     )
     c.execute(
         "CREATE TABLE IF NOT EXISTS mission_progress("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, mission_id TEXT, "
+        "id SERIAL PRIMARY KEY, user_id TEXT, mission_id TEXT, "
         "status TEXT, current_step INTEGER DEFAULT 0, completed_at TEXT, "
         "UNIQUE(user_id, mission_id))"
     )
@@ -34,7 +36,7 @@ def ensure_user(user_id: str):
     con = get_conn()
     c = con.cursor()
     c.execute(
-        "INSERT OR IGNORE INTO users(user_id, created_at) VALUES(?,?)",
+        "INSERT INTO users(user_id, created_at) VALUES(%s,%s) ON CONFLICT DO NOTHING",
         (user_id, datetime.datetime.now().isoformat()),
     )
     con.commit()
@@ -47,7 +49,7 @@ def save_signals(user_id: str, signals: dict):
     now = datetime.datetime.now().isoformat()
     for k, v in signals.items():
         c.execute(
-            "INSERT INTO signals(user_id, type, value, ts) VALUES(?,?,?,?)",
+            "INSERT INTO signals(user_id, type, value, ts) VALUES(%s,%s,%s,%s)",
             (user_id, k, str(v), now),
         )
     con.commit()
@@ -56,37 +58,40 @@ def save_signals(user_id: str, signals: dict):
 
 def get_progress(user_id: str, mission_id: str):
     con = get_conn()
-    con.row_factory = sqlite3.Row
-    row = con.execute(
-        "SELECT * FROM mission_progress WHERE user_id=? AND mission_id=?",
+    c = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute(
+        "SELECT * FROM mission_progress WHERE user_id=%s AND mission_id=%s",
         (user_id, mission_id),
-    ).fetchone()
+    )
+    row = c.fetchone()
     con.close()
     return dict(row) if row else None
 
 
 def list_progress(user_id: str):
     con = get_conn()
-    con.row_factory = sqlite3.Row
-    rows = con.execute(
-        "SELECT * FROM mission_progress WHERE user_id=?", (user_id,)
-    ).fetchall()
+    c = con.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    c.execute(
+        "SELECT * FROM mission_progress WHERE user_id=%s", (user_id,)
+    )
+    rows = c.fetchall()
     con.close()
     return {r["mission_id"]: dict(r) for r in rows}
 
 
 def upsert_progress(user_id: str, mission_id: str, status: str, current_step: int):
     con = get_conn()
+    c = con.cursor()
     now = datetime.datetime.now().isoformat()
     completed_at = now if status == "done" else None
-    con.execute(
+    c.execute(
         """
         INSERT INTO mission_progress(user_id, mission_id, status, current_step, completed_at)
-        VALUES(?,?,?,?,?)
+        VALUES(%s,%s,%s,%s,%s)
         ON CONFLICT(user_id, mission_id) DO UPDATE SET
-            status=excluded.status,
-            current_step=excluded.current_step,
-            completed_at=excluded.completed_at
+            status=EXCLUDED.status,
+            current_step=EXCLUDED.current_step,
+            completed_at=EXCLUDED.completed_at
         """,
         (user_id, mission_id, status, current_step, completed_at),
     )

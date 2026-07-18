@@ -31,3 +31,7 @@ logs/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Docker (로컬 오버라이드)
+docker-compose.yml
+server/Dockerfile
