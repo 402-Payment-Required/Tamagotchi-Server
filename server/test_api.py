@@ -7,7 +7,7 @@ import base64
 import io
 import struct
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 # Windows 콘솔 UTF-8 출력
 if sys.platform == "win32":
@@ -52,6 +52,9 @@ _text_block = MagicMock()
 _text_block.type = "text"
 _text_block.text = '{"reply": "네 안녕하세요.", "emotion": "happy", "signals": {"mood": "good"}}'
 _anthropic_response.content = [_text_block]
+# AsyncAnthropic().messages.create()가 awaitable coroutine을 반환해야 하므로 AsyncMock
+_anthropic_mock.AsyncAnthropic.return_value.messages.create = AsyncMock(return_value=_anthropic_response)
+# sync 클라이언트도 남겨둠 (혹시 다른 곳에서 쓸 경우)
 _anthropic_mock.Anthropic.return_value.messages.create.return_value = _anthropic_response
 
 

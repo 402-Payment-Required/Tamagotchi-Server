@@ -18,7 +18,7 @@ Swagger:
 """
 import struct
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 # ── AI 라이브러리 Mock 주입 (app 임포트 전) ────────────────────────────────────
 _whisper_mock = MagicMock()
@@ -56,6 +56,8 @@ _text_block.text = (
     '{"reply": "할머니 오늘 기분은 어떠세요?", "emotion": "happy", "signals": {"mood": "good"}}'
 )
 _anthropic_response.content = [_text_block]
+# AsyncAnthropic()가 반환하는 messages.create는 coroutine이어야 함
+_anthropic_mock.AsyncAnthropic.return_value.messages.create = AsyncMock(return_value=_anthropic_response)
 _anthropic_mock.Anthropic.return_value.messages.create.return_value = _anthropic_response
 
 
