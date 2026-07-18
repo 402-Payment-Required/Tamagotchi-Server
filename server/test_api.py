@@ -46,13 +46,21 @@ _melo_api_mock.TTS.return_value = _tts_instance
 sys.modules["melo"] = MagicMock()
 sys.modules["melo.api"] = _melo_api_mock
 
-_ollama_mock = MagicMock()
-_ollama_response = MagicMock()
-_ollama_response.message.content = (
-    '{"reply": "네 안녕하세요.", "emotion": "happy", "signals": {"mood": "good"}}'
-)
-_ollama_mock.chat.return_value = _ollama_response
-sys.modules["ollama"] = _ollama_mock
+_anthropic_mock = MagicMock()
+_anthropic_response = MagicMock()
+_text_block = MagicMock()
+_text_block.type = "text"
+_text_block.text = '{"reply": "네 안녕하세요.", "emotion": "happy", "signals": {"mood": "good"}}'
+_anthropic_response.content = [_text_block]
+_anthropic_mock.Anthropic.return_value.messages.create.return_value = _anthropic_response
+
+
+class _APIErrorStub(Exception):
+    pass
+
+
+_anthropic_mock.APIError = _APIErrorStub
+sys.modules["anthropic"] = _anthropic_mock
 
 # ── 이제 app 임포트 ────────────────────────────────────────────────────────────
 from fastapi.testclient import TestClient  # noqa: E402
