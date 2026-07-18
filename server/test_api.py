@@ -5,6 +5,7 @@ HTTP API 엔드포인트 테스트 (Ollama/모델/DB 없이 실행 가능)
 
 import base64
 import io
+import json
 import struct
 import sys
 from unittest.mock import AsyncMock, MagicMock
@@ -26,8 +27,13 @@ async def _fake_edge_save(path):
     with open(path, "wb") as f:
         f.write(b"\xff\xfb\x90\x00" + b"\x00" * 200)  # 최소 MP3 stub
 
+async def _fake_stream():
+    yield {"type": "audio", "data": b"\xff\xfb\x90\x00" + b"\x00" * 100}
+    yield {"type": "audio", "data": b"\xff\xfb\x90\x00" + b"\x00" * 100}
+
 _edge_communicate_mock = MagicMock()
 _edge_communicate_mock.save = AsyncMock(side_effect=_fake_edge_save)
+_edge_communicate_mock.stream = _fake_stream  # async generator function
 
 _edge_mock = MagicMock()
 _edge_mock.Communicate.return_value = _edge_communicate_mock
@@ -173,6 +179,43 @@ def test_voice():
     check("POST /voice/end — status=ended", r.json().get("status") == "ended")
 
 
+def test_voice_stream():
+    print("\n[스트리밍 엔드포인트]")
+    USER = "test_user_api"
+
+    r = client.post("/voice/start", json={"user_id": USER})
+    session_id = r.json().get("session_id", "")
+
+    wav = _minimal_wav()
+    r = client.post(
+        "/voice/stream",
+        data={"user_id": USER, "session_id": session_id},
+        files={"audio": ("test.wav", wav, "audio/wav")},
+    )
+    check("POST /voice/stream — 200", r.status_code == 200)
+    check("POST /voice/stream — content-type ndjson", "ndjson" in r.headers.get("content-type", ""))
+
+    lines = [l for l in r.text.strip().split("\n") if l]
+    events = [json.loads(l) for l in lines]
+    types = [e["type"] for e in events]
+
+    check("POST /voice/stream — meta 첫 번째", bool(types) and types[0] == "meta")
+    check("POST /voice/stream — done 마지막", bool(types) and types[-1] == "done")
+
+    meta = next((e for e in events if e["type"] == "meta"), {})
+    check("POST /voice/stream — meta.reply 존재", bool(meta.get("reply")))
+    check("POST /voice/stream — meta.emotion 유효값", meta.get("emotion") in {"happy", "worried", "excited", "sad", "neutral"})
+
+    audio_events = [e for e in events if e["type"] == "audio"]
+    check("POST /voice/stream — audio 청크 존재", len(audio_events) > 0)
+    if audio_events:
+        try:
+            base64.b64decode(audio_events[0]["data"])
+            check("POST /voice/stream — audio base64 디코딩 가능", True)
+        except Exception:
+            check("POST /voice/stream — audio base64 디코딩 가능", False, "base64 디코딩 실패")
+
+
 def test_report():
     print("\n[리포트 엔드포인트]")
     USER = "test_user_api"
@@ -191,6 +234,7 @@ if __name__ == "__main__":
     try:
         test_mission()
         test_voice()
+        test_voice_stream()
         test_report()
     except Exception as e:
         print(f"\n예외 발생: {e}")
