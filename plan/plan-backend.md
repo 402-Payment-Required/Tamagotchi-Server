@@ -1,26 +1,30 @@
 # PLAN — Backend 담당 (B + C 통합) · 서버 기준
 
-> 소유: `server/chat/router.py`, `server/report/`, `server/mission/` 전부
+> 소유: `server/chat/router.py`, `server/chat/voice_router.py`, `server/report/`, `server/mission/` 전부
 > DB: `users`, `signals`, `mission_progress`
-> 책임: A의 `chat()`을 `/chat` API로 노출하고 시그널을 저장한다. 미션(키오스크·타자)의 서버 로직 전체도 담당한다. 서버 뼈대와 공동 파일도 주도한다.
+> 책임: `/voice/*` 라우터를 구현해 A의 STT→LLM→TTS 파이프라인을 호출한다. 미션(키오스크·타자)의 서버 로직 전체도 담당한다. 서버 뼈대와 공동 파일도 주도한다.
+> `/chat` 텍스트 엔드포인트는 필요 시 유지하되, 주력은 `/voice/*`.
 
 ---
 
 ## 산출물
 
-1. `main.py` / `db.py` / `schemas.py` — 공동 뼈대 (0시 주도)
-2. `chat/router.py` — `POST /chat`
-3. `report/router.py` — `GET /report` (부가)
-4. `db.py`의 `users`·`signals`·`mission_progress` 헬퍼
-5. `mission/router.py` — `/mission/list`, `/start`, `/step`, `/complete`
-6. `mission/service.py` — 키오스크 상태머신, 타자 판정
-7. `mission/data.py` — 미션 정의 (단계·선택지·정답·힌트)
+1. `main.py` / `db.py` / `schemas.py` — 공동 뼈대 (0시 주도, Voice 스키마 포함)
+2. `chat/voice_router.py` — `POST /voice/start`, `POST /voice/chat`, `POST /voice/end`
+3. `chat/router.py` — `POST /chat` (유지 여부 판단, 선택)
+4. `report/router.py` — `GET /report` (부가)
+5. `db.py`의 `users`·`signals`·`mission_progress` 헬퍼
+6. `mission/router.py` — `/mission/list`, `/start`, `/step`, `/complete`
+7. `mission/service.py` — 키오스크 상태머신, 타자 판정
+8. `mission/data.py` — 미션 정의 (단계·선택지·정답·힌트)
 
 ## 완료 정의 (Definition of Done)
 
 - [ ] FastAPI 서버가 뜨고 CORS로 앱 접근 가능
 - [ ] SQLite 3테이블 init 동작
-- [ ] `/chat`이 A의 `chat()` 호출 → 결과 반환
+- [ ] `POST /voice/start` → session_id 반환
+- [ ] `POST /voice/chat` (multipart audio) → A 파이프라인 호출 → base64 audio + reply + emotion + signals 반환
+- [ ] `POST /voice/end` → 세션 종료
 - [ ] signals 있으면 저장, user 없으면 자동 생성
 - [ ] ngrok로 외부 URL 확보 (앱 연동)
 - [ ] `/report` 집계 (부가, 목업 가능)
@@ -38,16 +42,17 @@
 ### 0~1h · 공동 셋업 (Backend 주도)
 
 - 레포에 `server/` FastAPI 뼈대 생성.
-- `schemas.py`에 API 계약 전체를 Pydantic 모델로 작성 (문서 4 기준) → A와 확인 후 냉동.
+- `schemas.py`에 API 계약 전체를 Pydantic 모델로 작성 (Voice 스키마 포함) → A와 확인 후 냉동.
 - `db.py`에 3테이블 init + 헬퍼 뼈대.
 - `main.py`에 라우터 등록 + CORS (`allow_origins=["*"]` 데모용).
-- `main.py`에 mission 라우터 등록될 자리 확보.
+- `main.py`에 voice·mission 라우터 등록될 자리 확보.
 
 ```python
 # main.py 핵심
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from chat.router import router as chat_router
+from chat.voice_router import router as voice_router
+from chat.router import router as chat_router  # 선택적 유지
 from mission.router import router as mission_router
 from report.router import router as report_router
 from db import init_db
@@ -55,44 +60,72 @@ from db import init_db
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 init_db()
+app.include_router(voice_router)
 app.include_router(chat_router)
 app.include_router(mission_router)
 app.include_router(report_router)
 ```
 
-### 1~2h · Mock /chat + mission/data.py 착수
+### 1~2h · Mock voice 파이프라인 + mission/data.py 착수
 
-- A의 `chat()`이 아직이면 Mock으로 리턴하게 두고 프론트와 병행.
-- `mission/data.py`에 키오스크 카페 6단계 정의 시작.
+- A의 파이프라인이 아직이면 Mock으로 두고 `/voice/*` 라우터 뼈대 먼저 완성.
+- `mission/data.py`에 키오스크 카페 단계 정의 시작.
 
 ```python
 # chat/engine.py 임시 Mock (A가 곧 교체)
-def chat(message, history=None):
+def chat(message: str, session_id: str):
     return {"reply": f"{message}? 우와 할머니!", "emotion": "happy", "signals": {}}
+
+def transcribe(audio_bytes: bytes) -> str:
+    return "안녕하세요"  # Mock
+
+def synthesize(text: str) -> bytes:
+    return b""  # Mock WAV
 ```
 
-### 2~6h · /chat 라우터 + DB 헬퍼 + 미션 서버 구현
+### 2~6h · /voice/* 라우터 + DB 헬퍼 + 미션 서버 구현
 
-**chat 파트**
-- `chat/router.py` 구현: ensure_user → chat() 호출 → save_signals → 반환.
+**voice 파트**
+- `chat/voice_router.py` 구현: `/voice/start` → session_id / `/voice/chat` → 파이프라인 / `/voice/end` → 종료.
 - `db.py`: `ensure_user(user_id)`, `save_signals(user_id, signals)` 구현.
 
 ```python
-# chat/router.py
-from fastapi import APIRouter
+# chat/voice_router.py
+import base64
+from fastapi import APIRouter, UploadFile, Form
+from chat.session import start_session, end_session
+from chat.stt import transcribe
+from chat.tts import synthesize
 from chat.engine import chat
 from db import ensure_user, save_signals
 
-router = APIRouter()
+router = APIRouter(prefix="/voice")
+
+@router.post("/start")
+def voice_start(body: dict):
+    ensure_user(body["user_id"])
+    session_id = start_session(body["user_id"])
+    return {"session_id": session_id}
 
 @router.post("/chat")
-def chat_endpoint(body: dict):
-    uid, msg = body["user_id"], body["message"]
-    ensure_user(uid)
-    result = chat(msg)
+async def voice_chat(user_id: str = Form(...), session_id: str = Form(...), audio: UploadFile = ...):
+    audio_bytes = await audio.read()
+    text = transcribe(audio_bytes)
+    result = chat(text, session_id)
     if result.get("signals"):
-        save_signals(uid, result["signals"])
-    return result
+        save_signals(user_id, result["signals"])
+    tts_bytes = synthesize(result["reply"])
+    return {
+        "audio": base64.b64encode(tts_bytes).decode(),
+        "reply": result["reply"],
+        "emotion": result["emotion"],
+        "signals": result.get("signals", {}),
+    }
+
+@router.post("/end")
+def voice_end(body: dict):
+    end_session(body["session_id"])
+    return {"status": "ended"}
 ```
 
 **mission 파트** (독립적으로 자체 완결 개발)
@@ -108,9 +141,9 @@ curl -X POST localhost:8000/mission/step -H 'Content-Type: application/json' \
   -d '{"user_id":"t","mission_id":"kiosk_cafe","action":"eat_in"}'
 ```
 
-### 6~9h · A 엔진 연결 + 통합 검증
+### 6~9h · A 파이프라인 연결 + 통합 검증
 
-- A의 실제 `chat()`로 교체된 뒤 전 구간 (앱→/chat→Claude) 확인.
+- A의 실제 `transcribe()` / `chat()` / `synthesize()` 로 교체된 뒤 전 구간 (앱→/voice/chat→Ollama) 확인.
 - signals가 실제로 테이블에 쌓이는지 확인.
 - 앱(미션 화면)과 연결, 실제 폰에서 키오스크 완주 확인.
 
@@ -122,7 +155,7 @@ curl -X POST localhost:8000/mission/step -H 'Content-Type: application/json' \
 ### 12h~ · 데모 대비
 
 - ngrok URL 안정성 확인 (끊기면 재발급→앱 baseURL 갱신).
-- `/chat` 지연·에러 시 앱이 폴백하는지 A와 함께 점검.
+- `/voice/chat` 지연·에러 시 앱이 폴백하는지 A와 함께 점검.
 - 데모 경로 (키오스크 완주 + 오답→힌트 1회) 리허설.
 
 ---
@@ -219,7 +252,7 @@ def step(body: dict):
 
 ## 접점
 
-- Backend ← A: `chat()` import.
-- Backend → 프론트: `/chat`·`/report`·`/mission/*` JSON (계약 준수).
+- Backend ← A: `chat(message, session_id)`, `transcribe(audio_bytes)`, `synthesize(text)`, `start_session(user_id)`, `end_session(session_id)` import.
+- Backend → 프론트: `/voice/*`·`/report`·`/mission/*` JSON (계약 준수).
 - Backend ↛ A (미션): 대화 서버 호출 안 함. 힌트는 고정 문구 (A 톤 감수는 선택).
 - Backend가 유일하게 쓰는 공유 자원: 3개 테이블 전부 (users·signals·mission_progress).
