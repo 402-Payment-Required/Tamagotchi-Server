@@ -2,14 +2,14 @@ import json
 import logging
 import re
 
-import ollama
+import anthropic
 
 from chat.prompts import SYSTEM_PROMPT
 from chat.session import add_turn, get_history
 
 logger = logging.getLogger(__name__)
 
-MODEL = "exaone3.5:7.8b"
+MODEL = "claude-haiku-4-5"
 EMOTIONS = {"happy", "worried", "excited", "sad", "neutral"}
 FALLBACK = {
     "reply": "지금은 잘 못 들었어요, 다시 한 번 말씀해 주시겠어요?",
@@ -17,6 +17,9 @@ FALLBACK = {
     "signals": {},
 }
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+# ANTHROPIC_API_KEY 환경변수를 자동 사용
+_client = anthropic.Anthropic()
 
 
 def _extract_json(raw: str) -> str:
@@ -27,17 +30,21 @@ def _extract_json(raw: str) -> str:
 
 def chat(message: str, session_id: str) -> dict:
     history = get_history(session_id)
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-    messages.extend(history)
-    messages.append({"role": "user", "content": message})
+    messages = list(history) + [{"role": "user", "content": message}]
 
     try:
-        response = ollama.chat(
+        # cache_control은 프리픽스가 짧으면 no-op이지만 향후 프롬프트 확장 시 자동 캐싱되도록 유지
+        response = _client.messages.create(
             model=MODEL,
+            max_tokens=200,
+            system=[{
+                "type": "text",
+                "text": SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }],
             messages=messages,
-            options={"temperature": 0.7, "num_predict": 150},
         )
-        raw = response.message.content
+        raw = next((b.text for b in response.content if b.type == "text"), "")
         data = json.loads(_extract_json(raw))
         if data.get("emotion") not in EMOTIONS:
             data["emotion"] = "neutral"
@@ -48,6 +55,9 @@ def chat(message: str, session_id: str) -> dict:
     except json.JSONDecodeError:
         logger.warning("JSON 파싱 실패 — 원문: %s", raw)
         return dict(FALLBACK)
+    except anthropic.APIError:
+        logger.exception("Claude API 오류")
+        return dict(FALLBACK)
     except Exception:
-        logger.exception("Ollama 호출 오류")
+        logger.exception("engine.chat 오류")
         return dict(FALLBACK)
