@@ -14,13 +14,14 @@ FALLBACK = {"reply": "지금은 대답하기 어려워요, 다시 한 번 말씀
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat_endpoint(body: ChatRequest):
+async def chat_endpoint(body: ChatRequest):
+    # async: client disconnect 시 engine.chat 코루틴이 취소되어 Claude API 요청도 중단됨
     session_id = None
     try:
         ensure_user(body.user_id)
         # 텍스트 챗은 요청당 세션 (음성 흐름의 /voice/start와 분리)
         session_id = start_session(body.user_id)
-        result = chat(body.message, session_id)
+        result = await chat(body.message, session_id)
         if result.get("signals"):
             save_signals(body.user_id, result["signals"])
         return result

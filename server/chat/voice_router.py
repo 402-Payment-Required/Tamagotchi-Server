@@ -47,7 +47,7 @@ except ImportError:
 try:
     from chat.engine import chat as engine_chat
 except ImportError:
-    def engine_chat(message: str, session_id: str) -> dict:
+    async def engine_chat(message: str, session_id: str) -> dict:
         return {"reply": "잠시 후 다시 말씀해 주세요.", "emotion": "neutral", "signals": {}}
 
 router = APIRouter(prefix="/voice")
@@ -80,7 +80,7 @@ async def voice_chat(
     try:
         audio_bytes = await audio.read()
         text = transcribe(audio_bytes)
-        result = engine_chat(text, session_id)
+        result = await engine_chat(text, session_id)
         if result.get("signals"):
             save_signals(user_id, result["signals"])
         tts_bytes = synthesize(result["reply"])
