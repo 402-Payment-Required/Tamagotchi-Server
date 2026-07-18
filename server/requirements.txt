@@ -1,8 +1,10 @@
 fastapi
 uvicorn[standard]
 pydantic
-anthropic
 python-dotenv
 python-multipart
 pytest
 httpx
+faster-whisper
+ollama
+melotts
