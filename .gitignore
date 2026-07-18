@@ -11,3 +11,6 @@ venv/
 *.wav
 test_tts_output.*
 response.json
+
+# 로컬 리서치 문서
+research.md

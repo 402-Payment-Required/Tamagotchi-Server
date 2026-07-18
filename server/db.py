@@ -1,7 +1,8 @@
 import datetime
 import sqlite3
+from pathlib import Path
 
-DB_PATH = "sonju.db"
+DB_PATH = Path(__file__).parent / "sonju.db"
 
 
 def get_conn():
