@@ -9,6 +9,7 @@ dependencies = [
     "python-dotenv",
     "python-multipart",
     "psycopg2-binary",
+    "anthropic>=0.117.0",
     "pytest",
     "httpx",
     "faster-whisper",
