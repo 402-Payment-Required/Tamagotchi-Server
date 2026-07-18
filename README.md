@@ -6,10 +6,14 @@ AI 손주와 **음성으로 대화**하고 **미션**을 수행하는 흐름을 
 ## 기술 스택
 
 - Python 3.11 · FastAPI · uvicorn · SQLite
-- STT: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) medium (CPU int8)
+- STT: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) base (CPU int8)
 - LLM: Anthropic **Claude Haiku 4.5** (`claude-haiku-4-5`) — 이 브랜치 기준
-  (기존 Ollama exaone3.5 스택은 `feat/ai-pipeline` 브랜치에 유지)
-- TTS: [MeloTTS-Korean](https://github.com/myshell-ai/MeloTTS)
+- TTS: [Piper-TTS](https://github.com/rhasspy/piper) 한국어 low 티어
+
+**브랜치별 스택**:
+- `main`: Claude API + faster-whisper base + Piper (경량 최적화)
+- `feat/ai-lightweight`: 위와 동일 (별도 개발/테스트용)
+- `feat/ai-pipeline`: Ollama exaone3.5 + MeloTTS (오프라인/저비용 우선)
 
 ## 빠른 실행 (Windows / macOS / Linux 공통)
 
@@ -56,19 +60,20 @@ uv run python test_api.py  # HTTP 엔드포인트 검증 (19/19)
 
 자세한 요청·응답 스키마는 `server/schemas.py` 또는 Swagger 참고.
 
-## 브랜치별 LLM 비교 (실측)
+## 브랜치별 스택 비교
 
-| 항목 | `feat/ai-pipeline` (Ollama exaone3.5:7.8b, CPU) | `feat/ai-claude-api` (Claude Haiku 4.5) |
+| 항목 | `feat/ai-pipeline` | `main`/`feat/ai-lightweight` |
 |---|---|---|
-| 텍스트 챗봇 응답 | 6~8초 | **1.4~2초** |
-| 음성 왕복 (STT+LLM+TTS) | 20~28초 | **17초** |
-| 인터넷 필요 | 아니오 | 예 |
-| RAM 사용 | 5.4 GB (Ollama daemon) | 0 (원격) |
-| 요청당 비용 | 무료 | 약 1.6원 |
-| 응답 품질 | 자연스러움 | 자연스러움 (동등) |
+| LLM | Ollama exaone3.5 (로컬) | Claude Haiku 4.5 (API) |
+| STT | faster-whisper medium | faster-whisper **base** |
+| TTS | MeloTTS-Korean | Piper-TTS **low** |
+| 배포 크기 | ~1.5GB (Ollama 포함) | **~500MB** (모델만) |
+| 인터넷 필요 | 아니오 | 예 (API 호출) |
+| RAM 사용 | 5.4 GB (Ollama daemon) | ~800MB |
+| 요청당 비용 | 무료 | ~1.6원 (Claude Haiku) |
 
-- 오프라인·저비용 우선 → **`feat/ai-pipeline`**
-- 속도·품질·저메모리 우선 → **`feat/ai-claude-api`** (기본)
+- **오프라인·저비용 우선** → `feat/ai-pipeline`
+- **경량 배포·빠른 응답** → `main` (권장)
 
 ## 견고성
 
