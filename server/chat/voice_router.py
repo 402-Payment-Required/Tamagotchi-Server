@@ -85,7 +85,8 @@ async def voice_chat(
         result = await _r if inspect.isawaitable(_r) else _r
         if result.get("signals"):
             save_signals(user_id, result["signals"])
-        tts_bytes = synthesize(result["reply"])
+        _s = synthesize(result["reply"])
+        tts_bytes = await _s if inspect.isawaitable(_s) else _s
         return VoiceChatResponse(
             audio=base64.b64encode(tts_bytes).decode(),
             reply=result["reply"],
