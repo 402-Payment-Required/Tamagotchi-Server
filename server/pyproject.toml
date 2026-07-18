@@ -16,5 +16,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-# melotts PyPI 설치 실패 시 아래 git 소스로 교체
-# melotts = { git = "https://github.com/myshell-ai/MeloTTS.git" }
+melotts = { git = "https://github.com/myshell-ai/MeloTTS.git" }
