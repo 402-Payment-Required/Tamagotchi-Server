@@ -65,6 +65,23 @@ class _APIErrorStub(Exception):
 _anthropic_mock.APIError = _APIErrorStub
 sys.modules["anthropic"] = _anthropic_mock
 
+# psycopg2 Mock — CI/로컬에 PostgreSQL 서버가 없어도 서버 임포트가 성공하도록
+_psycopg2_mock = MagicMock()
+_fake_cursor = MagicMock()
+_fake_cursor.__enter__ = lambda s: s
+_fake_cursor.__exit__ = lambda s, *a: None
+_fake_cursor.fetchone.return_value = None
+_fake_cursor.fetchall.return_value = []
+_fake_conn = MagicMock()
+_fake_conn.cursor.return_value = _fake_cursor
+_fake_conn.__enter__ = lambda s: s
+_fake_conn.__exit__ = lambda s, *a: None
+_psycopg2_mock.connect.return_value = _fake_conn
+_psycopg2_extras_mock = MagicMock()
+_psycopg2_extras_mock.RealDictCursor = MagicMock()
+sys.modules["psycopg2"] = _psycopg2_mock
+sys.modules["psycopg2.extras"] = _psycopg2_extras_mock
+
 # ── 이제 app 임포트 ────────────────────────────────────────────────────────────
 from fastapi.testclient import TestClient  # noqa: E402
 from main import app  # noqa: E402
