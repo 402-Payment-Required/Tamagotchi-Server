@@ -10,8 +10,6 @@ dependencies = [
     "python-multipart",
     "psycopg2-binary",
     "anthropic>=0.117.0",
-    "pytest",
-    "httpx",
     "faster-whisper",
     "edge-tts",
     "setuptools<80",
