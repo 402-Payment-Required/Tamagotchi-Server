@@ -13,6 +13,7 @@ dependencies = [
     "faster-whisper",
     "ollama",
     "melotts",
+    "setuptools",
 ]
 
 [tool.uv.sources]
