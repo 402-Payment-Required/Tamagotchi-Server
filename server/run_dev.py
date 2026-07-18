@@ -73,10 +73,15 @@ import uvicorn  # noqa: E402
 from main import app  # noqa: E402
 
 if __name__ == "__main__":
-    print("=" * 50)
-    print("[Mock AI 모드] 서버 시작")
-    print("Swagger UI : http://localhost:8000/docs")
-    print("ReDoc      : http://localhost:8000/redoc")
-    print("종료       : Ctrl+C")
-    print("=" * 50)
+    print("=" * 60)
+    print("[Mock AI 모드] Ollama·모델·API 키 없이 즉시 실행")
+    print("  STT  → 항상 '안녕하세요, 오늘 날씨가 참 좋네요.'")
+    print("  LLM  → 항상 happy·mood:good 응답 (Anthropic 스텁)")
+    print("  TTS  → 1초짜리 무음 WAV")
+    print("-" * 60)
+    print(" Swagger UI : http://localhost:8000/docs")
+    print(" ReDoc      : http://localhost:8000/redoc")
+    print(" LAN 접속   : http://<your-ip>:8000  (0.0.0.0 바인딩)")
+    print(" 종료       : Ctrl+C")
+    print("=" * 60)
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
