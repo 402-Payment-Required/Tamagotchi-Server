@@ -5,16 +5,14 @@ HTTP API 엔드포인트 테스트 (Ollama/모델 없이 실행 가능)
 
 import base64
 import io
-import os
 import struct
 import sys
 from unittest.mock import MagicMock
 
 # Windows 콘솔 UTF-8 출력
 if sys.platform == "win32":
-    import io as _io
-    sys.stdout = _io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-    sys.stderr = _io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # ── AI 라이브러리를 모듈 임포트 전에 패치 ──────────────────────────────────────
 # stt.py, tts.py가 모듈 레벨에서 모델을 로드하므로 app 임포트 전에 먼저 주입
