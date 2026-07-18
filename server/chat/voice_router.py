@@ -117,6 +117,7 @@ async def voice_stream(
     마지막: {"type":"done"}
     """
     async def generate():
+        meta_sent = False
         try:
             audio_bytes = await audio.read()
             text = transcribe(audio_bytes)
@@ -133,12 +134,17 @@ async def voice_stream(
                 "emotion": result.get("emotion", "neutral"),
                 "signals": result.get("signals", {}),
             }, ensure_ascii=False) + "\n"
+            meta_sent = True
 
-            async for chunk in stream_synthesize(result["reply"]):
-                yield json.dumps({
-                    "type": "audio",
-                    "data": base64.b64encode(chunk).decode(),
-                }) + "\n"
+            try:
+                async for chunk in stream_synthesize(result["reply"]):
+                    yield json.dumps({
+                        "type": "audio",
+                        "data": base64.b64encode(chunk).decode(),
+                    }) + "\n"
+            except Exception:
+                # TTS 오류 — meta는 이미 전송됐으므로 오디오만 생략하고 done으로 마무리
+                logger.warning("voice_stream TTS 오류 — 오디오 생략")
 
             yield json.dumps({"type": "done"}) + "\n"
 
@@ -146,12 +152,13 @@ async def voice_stream(
             raise
         except Exception:
             logger.exception("voice_stream 오류")
-            yield json.dumps({
-                "type": "meta",
-                "reply": "지금은 대답하기 어려워요, 다시 한 번 말씀해 주시겠어요?",
-                "emotion": "neutral",
-                "signals": {},
-            }, ensure_ascii=False) + "\n"
+            if not meta_sent:
+                yield json.dumps({
+                    "type": "meta",
+                    "reply": "지금은 대답하기 어려워요, 다시 한 번 말씀해 주시겠어요?",
+                    "emotion": "neutral",
+                    "signals": {},
+                }, ensure_ascii=False) + "\n"
             yield json.dumps({"type": "done"}) + "\n"
 
     return StreamingResponse(generate(), media_type="application/x-ndjson")
