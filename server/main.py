@@ -1,3 +1,8 @@
+from dotenv import load_dotenv
+
+# 서버 시작 시 .env 자동 로드 (ANTHROPIC_API_KEY 등)
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
