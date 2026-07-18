@@ -22,28 +22,16 @@ _whisper_mock.WhisperModel.return_value.transcribe.return_value = (
 )
 sys.modules["faster_whisper"] = _whisper_mock
 
-_melo_api_mock = MagicMock()
-_tts_instance = MagicMock()
-_tts_instance.hps.data.spk2id = {"KR": 0}
-
-
-def _fake_tts_to_file(text, speaker_id, path, quiet=False):
-    num_samples = 1600
-    data_size = num_samples * 2
+async def _fake_edge_save(path):
     with open(path, "wb") as f:
-        f.write(b"RIFF")
-        f.write(struct.pack("<I", 36 + data_size))
-        f.write(b"WAVEfmt ")
-        f.write(struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16))
-        f.write(b"data")
-        f.write(struct.pack("<I", data_size))
-        f.write(b"\x00" * data_size)
+        f.write(b"\xff\xfb\x90\x00" + b"\x00" * 200)  # 최소 MP3 stub
 
+_edge_communicate_mock = MagicMock()
+_edge_communicate_mock.save = AsyncMock(side_effect=_fake_edge_save)
 
-_tts_instance.tts_to_file.side_effect = _fake_tts_to_file
-_melo_api_mock.TTS.return_value = _tts_instance
-sys.modules["melo"] = MagicMock()
-sys.modules["melo.api"] = _melo_api_mock
+_edge_mock = MagicMock()
+_edge_mock.Communicate.return_value = _edge_communicate_mock
+sys.modules["edge_tts"] = _edge_mock
 
 # ── AI 백엔드 mock: 실제 API 절대 호출 금지 ────────────────────────────────────
 # Ollama mock (현재 main의 engine.py)

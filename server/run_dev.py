@@ -28,25 +28,16 @@ _whisper_mock.WhisperModel.return_value.transcribe.return_value = (
 )
 sys.modules["faster_whisper"] = _whisper_mock
 
-def _fake_tts_to_file(text, speaker_id, path, quiet=False):
-    num_samples = 16000  # 1초 분량 silence
-    data_size = num_samples * 2
+async def _fake_edge_save(path):
     with open(path, "wb") as f:
-        f.write(b"RIFF")
-        f.write(struct.pack("<I", 36 + data_size))
-        f.write(b"WAVEfmt ")
-        f.write(struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16))
-        f.write(b"data")
-        f.write(struct.pack("<I", data_size))
-        f.write(b"\x00" * data_size)
+        f.write(b"\xff\xfb\x90\x00" + b"\x00" * 200)
 
-_melo_api_mock = MagicMock()
-_tts_instance = MagicMock()
-_tts_instance.hps.data.spk2id = {"KR": 0}
-_tts_instance.tts_to_file.side_effect = _fake_tts_to_file
-_melo_api_mock.TTS.return_value = _tts_instance
-sys.modules["melo"] = MagicMock()
-sys.modules["melo.api"] = _melo_api_mock
+_edge_communicate_mock = MagicMock()
+_edge_communicate_mock.save = AsyncMock(side_effect=_fake_edge_save)
+
+_edge_mock = MagicMock()
+_edge_mock.Communicate.return_value = _edge_communicate_mock
+sys.modules["edge_tts"] = _edge_mock
 
 _anthropic_mock = MagicMock()
 _anthropic_response = MagicMock()
