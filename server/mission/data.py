@@ -1,6 +1,7 @@
 MISSION_META = {
     "kiosk_cafe": {"title": "카페 키오스크 주문", "type": "kiosk"},
     "typing_1": {"title": "문자 따라 쓰기", "type": "typing"},
+    "sms_greeting": {"title": "손주에게 안부 문자 보내기", "type": "sms"},
 }
 
 MISSIONS = {
@@ -35,6 +36,30 @@ MISSIONS = {
             "options": [],
             "answer": "오늘 날씨가 좋네요",
             "hint": "띄어쓰기까지 똑같이 입력해보세요",
+            "final": True,
+        },
+    ],
+    "sms_greeting": [
+        {
+            "step": 0,
+            "prompt": "받는 사람을 골라주세요",
+            "options": ["손주", "손녀", "친구"],
+            "answer": "손주",
+            "hint": "제일 위 '손주' 버튼을 눌러보세요",
+        },
+        {
+            "step": 1,
+            "prompt": "보낼 내용을 골라주세요",
+            "options": ["오늘 밥 잘 먹었니", "사랑한다"],
+            "answer": "오늘 밥 잘 먹었니",
+            "hint": "'오늘 밥 잘 먹었니'를 골라보세요",
+        },
+        {
+            "step": 2,
+            "prompt": "정말 보내시겠어요?",
+            "options": ["보내기", "취소"],
+            "answer": "보내기",
+            "hint": "'보내기' 버튼을 눌러보세요",
             "final": True,
         },
     ],
