@@ -55,3 +55,27 @@ uv run python test_api.py  # HTTP 엔드포인트 검증 (19/19)
 | 리포트 | `GET /report` | 감정·신호 이력 |
 
 자세한 요청·응답 스키마는 `server/schemas.py` 또는 Swagger 참고.
+
+## 브랜치별 LLM 비교 (실측)
+
+| 항목 | `feat/ai-pipeline` (Ollama exaone3.5:7.8b, CPU) | `feat/ai-claude-api` (Claude Haiku 4.5) |
+|---|---|---|
+| 텍스트 챗봇 응답 | 6~8초 | **1.4~2초** |
+| 음성 왕복 (STT+LLM+TTS) | 20~28초 | **17초** |
+| 인터넷 필요 | 아니오 | 예 |
+| RAM 사용 | 5.4 GB (Ollama daemon) | 0 (원격) |
+| 요청당 비용 | 무료 | 약 1.6원 |
+| 응답 품질 | 자연스러움 | 자연스러움 (동등) |
+
+- 오프라인·저비용 우선 → **`feat/ai-pipeline`**
+- 속도·품질·저메모리 우선 → **`feat/ai-claude-api`** (기본)
+
+## 견고성
+
+`server/test_robustness.py` — 다음 시나리오에서 앱이 죽지 않음을 자동 검증:
+
+- API key 미설정 / 잘못된 key
+- 클라이언트 요청 도중 disconnect (Claude 요청도 즉시 취소, 토큰 낭비 없음)
+- Claude 응답 지연 → 30초 timeout → fallback
+- SDK 자동 재시도 차단 (`max_retries=0`)
+- 깨진 오디오 업로드 → silent WAV fallback
