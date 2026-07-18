@@ -13,7 +13,8 @@ dependencies = [
     "faster-whisper",
     "ollama",
     "melotts",
-    "setuptools",
+    "setuptools<80",
+    "python-mecab-ko>=1.3.7",
 ]
 
 [tool.uv.sources]
