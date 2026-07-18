@@ -7,9 +7,9 @@
     - Ollama·Whisper·MeloTTS 다운로드 없이 API만 돌려볼 때
 
 Mock 동작:
-    STT  → 항상 "안녕하세요, 오늘 날씨가 참 좋네요." 반환
-    LLM  → 항상 happy·mood:good 응답
-    TTS  → 1초짜리 무음 WAV 반환
+    STT      → 항상 "안녕하세요, 오늘 날씨가 참 좋네요." 반환
+    LLM      → 항상 happy·mood:good 응답 (Anthropic API 스텁)
+    TTS      → 1초짜리 무음 WAV 반환
 
 실행:
     cd server && uv run python run_dev.py
@@ -48,13 +48,23 @@ _melo_api_mock.TTS.return_value = _tts_instance
 sys.modules["melo"] = MagicMock()
 sys.modules["melo.api"] = _melo_api_mock
 
-_ollama_mock = MagicMock()
-_ollama_response = MagicMock()
-_ollama_response.message.content = (
+_anthropic_mock = MagicMock()
+_anthropic_response = MagicMock()
+_text_block = MagicMock()
+_text_block.type = "text"
+_text_block.text = (
     '{"reply": "할머니 오늘 기분은 어떠세요?", "emotion": "happy", "signals": {"mood": "good"}}'
 )
-_ollama_mock.chat.return_value = _ollama_response
-sys.modules["ollama"] = _ollama_mock
+_anthropic_response.content = [_text_block]
+_anthropic_mock.Anthropic.return_value.messages.create.return_value = _anthropic_response
+
+
+class _APIErrorStub(Exception):
+    pass
+
+
+_anthropic_mock.APIError = _APIErrorStub
+sys.modules["anthropic"] = _anthropic_mock
 
 # ── 서버 실행 ─────────────────────────────────────────────────────────────────
 import uvicorn  # noqa: E402
