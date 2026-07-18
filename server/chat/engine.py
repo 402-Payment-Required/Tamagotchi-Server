@@ -1,37 +1,45 @@
 import json
-import os
+import logging
 
-from anthropic import Anthropic
-from dotenv import load_dotenv
+import ollama
 
-from .prompts import SYSTEM_PROMPT
+from chat.prompts import SYSTEM_PROMPT
+from chat.session import add_turn, get_history
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-MODEL = "claude-sonnet-4-5"  # 콘솔에서 실제 사용 가능한 모델명인지 확인 후 확정할 것
-
+MODEL = "exaone3.5:7.8b"
 EMOTIONS = {"happy", "worried", "excited", "sad", "neutral"}
-
 FALLBACK = {
-    "reply": "지금은 대답하기 어려워요, 다시 한 번 말씀해 주시겠어요?",
+    "reply": "지금은 잘 못 들었어요, 다시 한 번 말씀해 주시겠어요?",
     "emotion": "neutral",
     "signals": {},
 }
 
 
-def chat(message: str, history=None) -> dict:
+def chat(message: str, session_id: str) -> dict:
+    history = get_history(session_id)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    messages.extend(history)
+    messages.append({"role": "user", "content": message})
+
     try:
-        resp = client.messages.create(
+        response = ollama.chat(
             model=MODEL,
-            max_tokens=300,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": message}],
+            messages=messages,
+            options={"temperature": 0.7, "num_predict": 200},
         )
-        data = json.loads(resp.content[0].text)
+        raw = response.message.content
+        data = json.loads(raw)
         if data.get("emotion") not in EMOTIONS:
             data["emotion"] = "neutral"
         data.setdefault("signals", {})
+        add_turn(session_id, "user", message)
+        add_turn(session_id, "assistant", data["reply"])
         return data
+    except json.JSONDecodeError:
+        logger.warning("JSON 파싱 실패 — 원문: %s", locals().get("raw", "없음"))
+        return dict(FALLBACK)
     except Exception:
+        logger.exception("Ollama 호출 오류")
         return dict(FALLBACK)
