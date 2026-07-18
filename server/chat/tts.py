@@ -1,6 +1,34 @@
+import importlib.metadata
+import importlib.util
 import logging
 import os
+import sys
 import tempfile
+import types
+
+# pkg_resources가 없는 환경에서 MeloTTS가 실패하므로 shim 주입
+if "pkg_resources" not in sys.modules:
+    try:
+        import pkg_resources  # noqa: F401
+    except ImportError:
+        _mod = types.ModuleType("pkg_resources")
+
+        def _get_distribution(name: str):
+            class _Dist:
+                version = importlib.metadata.version(name)
+            return _Dist()
+
+        def _resource_filename(package: str, resource: str) -> str:
+            spec = importlib.util.find_spec(package)
+            if spec and spec.submodule_search_locations:
+                return os.path.join(list(spec.submodule_search_locations)[0], resource)
+            return resource
+
+        _mod.get_distribution = _get_distribution
+        _mod.resource_filename = _resource_filename
+        _mod.resource_string = lambda pkg, res: b""
+        _mod.resource_listdir = lambda pkg, res: []
+        sys.modules["pkg_resources"] = _mod
 
 from melo.api import TTS as MeloTTS
 
