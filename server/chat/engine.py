@@ -38,7 +38,7 @@ def chat(message: str, session_id: str) -> dict:
         add_turn(session_id, "assistant", data["reply"])
         return data
     except json.JSONDecodeError:
-        logger.warning("JSON 파싱 실패 — 원문: %s", locals().get("raw", "없음"))
+        logger.warning("JSON 파싱 실패 — 원문: %s", raw)
         return dict(FALLBACK)
     except Exception:
         logger.exception("Ollama 호출 오류")
