@@ -1,5 +1,5 @@
 """
-HTTP API 엔드포인트 테스트 (Ollama/모델 없이 실행 가능)
+HTTP API 엔드포인트 테스트 (Ollama/모델/DB 없이 실행 가능)
 실행: cd server && uv run python test_api.py
 """
 
@@ -15,8 +15,6 @@ if sys.platform == "win32":
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 # ── AI 라이브러리를 모듈 임포트 전에 패치 ──────────────────────────────────────
-# stt.py, tts.py가 모듈 레벨에서 모델을 로드하므로 app 임포트 전에 먼저 주입
-
 _whisper_mock = MagicMock()
 _whisper_mock.WhisperModel.return_value.transcribe.return_value = (
     [MagicMock(text="테스트 발화입니다")],
@@ -28,8 +26,8 @@ _melo_api_mock = MagicMock()
 _tts_instance = MagicMock()
 _tts_instance.hps.data.spk2id = {"KR": 0}
 
+
 def _fake_tts_to_file(text, speaker_id, path, quiet=False):
-    # 44바이트 최소 WAV (silence 0.1초, 16kHz mono)
     num_samples = 1600
     data_size = num_samples * 2
     with open(path, "wb") as f:
@@ -41,20 +39,29 @@ def _fake_tts_to_file(text, speaker_id, path, quiet=False):
         f.write(struct.pack("<I", data_size))
         f.write(b"\x00" * data_size)
 
+
 _tts_instance.tts_to_file.side_effect = _fake_tts_to_file
 _melo_api_mock.TTS.return_value = _tts_instance
 sys.modules["melo"] = MagicMock()
 sys.modules["melo.api"] = _melo_api_mock
 
+# ── AI 백엔드 mock: 실제 API 절대 호출 금지 ────────────────────────────────────
+# Ollama mock (현재 main의 engine.py)
+_FAKE_REPLY = '{"reply": "네 안녕하세요.", "emotion": "happy", "signals": {"mood": "good"}}'
+_ollama_mock = MagicMock()
+_ollama_response = MagicMock()
+_ollama_response.message.content = _FAKE_REPLY
+_ollama_mock.chat.return_value = _ollama_response
+sys.modules["ollama"] = _ollama_mock
+
+# Anthropic mock (A팀 feat/ai-claude-api 머지 후 engine.py)
 _anthropic_mock = MagicMock()
 _anthropic_response = MagicMock()
 _text_block = MagicMock()
 _text_block.type = "text"
-_text_block.text = '{"reply": "네 안녕하세요.", "emotion": "happy", "signals": {"mood": "good"}}'
+_text_block.text = _FAKE_REPLY
 _anthropic_response.content = [_text_block]
-# AsyncAnthropic().messages.create()가 awaitable coroutine을 반환해야 하므로 AsyncMock
 _anthropic_mock.AsyncAnthropic.return_value.messages.create = AsyncMock(return_value=_anthropic_response)
-# sync 클라이언트도 남겨둠 (혹시 다른 곳에서 쓸 경우)
 _anthropic_mock.Anthropic.return_value.messages.create.return_value = _anthropic_response
 
 
@@ -65,7 +72,7 @@ class _APIErrorStub(Exception):
 _anthropic_mock.APIError = _APIErrorStub
 sys.modules["anthropic"] = _anthropic_mock
 
-# psycopg2 Mock — CI/로컬에 PostgreSQL 서버가 없어도 서버 임포트가 성공하도록
+# psycopg2 mock — CI/로컬에 PostgreSQL 서버가 없어도 서버 임포트가 성공하도록
 _psycopg2_mock = MagicMock()
 _fake_cursor = MagicMock()
 _fake_cursor.__enter__ = lambda s: s
@@ -91,6 +98,7 @@ client = TestClient(app)
 # ── 유틸 ───────────────────────────────────────────────────────────────────────
 _pass = 0
 _fail = 0
+
 
 def check(label: str, cond: bool, detail: str = ""):
     global _pass, _fail
@@ -189,7 +197,7 @@ def test_report():
 # ── 실행 ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 50)
-    print("API 엔드포인트 테스트 (Mock AI 모드)")
+    print("API 엔드포인트 테스트 (Mock AI + Mock DB 모드)")
     print("=" * 50)
 
     try:

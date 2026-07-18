@@ -1,4 +1,5 @@
 import base64
+import inspect
 import logging
 import struct
 import uuid
@@ -47,7 +48,7 @@ except ImportError:
 try:
     from chat.engine import chat as engine_chat
 except ImportError:
-    async def engine_chat(message: str, session_id: str) -> dict:
+    def engine_chat(message: str, session_id: str) -> dict:
         return {"reply": "잠시 후 다시 말씀해 주세요.", "emotion": "neutral", "signals": {}}
 
 router = APIRouter(prefix="/voice")
@@ -80,7 +81,8 @@ async def voice_chat(
     try:
         audio_bytes = await audio.read()
         text = transcribe(audio_bytes)
-        result = await engine_chat(text, session_id)
+        _r = engine_chat(text, session_id)
+        result = await _r if inspect.isawaitable(_r) else _r
         if result.get("signals"):
             save_signals(user_id, result["signals"])
         tts_bytes = synthesize(result["reply"])
