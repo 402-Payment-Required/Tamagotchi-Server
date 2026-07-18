@@ -1,10 +1,13 @@
+import asyncio
 import base64
 import inspect
+import json
 import logging
 import struct
 import uuid
 
 from fastapi import APIRouter, File, Form, UploadFile
+from fastapi.responses import StreamingResponse
 
 from db import ensure_user, save_signals
 from schemas import VoiceChatResponse, VoiceEndRequest, VoiceEndResponse, VoiceStartRequest, VoiceStartResponse
@@ -28,7 +31,7 @@ _SILENT_WAV_B64 = _silent_wav_b64()
 
 try:
     from chat.stt import transcribe
-    from chat.tts import synthesize
+    from chat.tts import synthesize, stream_synthesize
     from chat.session import start_session, end_session
 except ImportError:
     logger.warning("A 모듈(stt/tts/session) 없음 — Mock 사용")
@@ -38,6 +41,9 @@ except ImportError:
 
     def synthesize(text: str) -> bytes:
         return b""
+
+    async def stream_synthesize(text: str):
+        yield b""
 
     def start_session(user_id: str) -> str:
         return str(uuid.uuid4())
@@ -96,6 +102,66 @@ async def voice_chat(
     except Exception:
         logger.exception("voice_chat 오류")
         return FALLBACK_RESPONSE
+
+
+@router.post("/stream")
+async def voice_stream(
+    user_id: str = Form(...),
+    session_id: str = Form(...),
+    audio: UploadFile = File(...),
+):
+    """
+    NDJSON 스트리밍 엔드포인트.
+    첫 줄: {"type":"meta","reply":"...","emotion":"...","signals":{}}
+    이후:  {"type":"audio","data":"<base64 MP3 chunk>"}  (청크마다)
+    마지막: {"type":"done"}
+    """
+    async def generate():
+        meta_sent = False
+        try:
+            audio_bytes = await audio.read()
+            text = transcribe(audio_bytes)
+
+            _r = engine_chat(text, session_id)
+            result = await _r if inspect.isawaitable(_r) else _r
+
+            if result.get("signals"):
+                save_signals(user_id, result["signals"])
+
+            yield json.dumps({
+                "type": "meta",
+                "reply": result["reply"],
+                "emotion": result.get("emotion", "neutral"),
+                "signals": result.get("signals", {}),
+            }, ensure_ascii=False) + "\n"
+            meta_sent = True
+
+            try:
+                async for chunk in stream_synthesize(result["reply"]):
+                    yield json.dumps({
+                        "type": "audio",
+                        "data": base64.b64encode(chunk).decode(),
+                    }) + "\n"
+            except Exception:
+                # TTS 오류 — meta는 이미 전송됐으므로 오디오만 생략하고 done으로 마무리
+                logger.warning("voice_stream TTS 오류 — 오디오 생략")
+
+            yield json.dumps({"type": "done"}) + "\n"
+
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("voice_stream 오류")
+            if not meta_sent:
+                yield json.dumps({
+                    "type": "meta",
+                    "reply": "지금은 대답하기 어려워요, 다시 한 번 말씀해 주시겠어요?",
+                    "emotion": "neutral",
+                    "signals": {},
+                }, ensure_ascii=False) + "\n"
+            yield json.dumps({"type": "done"}) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @router.post("/end", response_model=VoiceEndResponse)
