@@ -35,3 +35,7 @@ logs/
 # Docker (로컬 오버라이드)
 docker-compose.yml
 server/Dockerfile
+
+# Claude Code 설정
+.claude/
+.playwright-mcp/
