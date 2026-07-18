@@ -16,7 +16,7 @@ def transcribe(audio_bytes: bytes) -> str:
         f.write(audio_bytes)
         tmp_path = f.name
     try:
-        segments, info = _model.transcribe(tmp_path, language="ko", beam_size=5)
+        segments, info = _model.transcribe(tmp_path, language="ko", beam_size=1)
         text = "".join(seg.text for seg in segments).strip()
         logger.debug("STT 결과 (%.2fs): %s", info.duration, text)
         return text

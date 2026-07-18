@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 
 import ollama
 
@@ -15,6 +16,13 @@ FALLBACK = {
     "emotion": "neutral",
     "signals": {},
 }
+_JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+def _extract_json(raw: str) -> str:
+    # LLM이 code fence(```json … ```)로 감싸거나 앞뒤에 부연 텍스트를 붙여도 JSON만 뽑음
+    m = _JSON_RE.search(raw)
+    return m.group(0) if m else raw
 
 
 def chat(message: str, session_id: str) -> dict:
@@ -27,10 +35,10 @@ def chat(message: str, session_id: str) -> dict:
         response = ollama.chat(
             model=MODEL,
             messages=messages,
-            options={"temperature": 0.7, "num_predict": 200},
+            options={"temperature": 0.7, "num_predict": 150},
         )
         raw = response.message.content
-        data = json.loads(raw)
+        data = json.loads(_extract_json(raw))
         if data.get("emotion") not in EMOTIONS:
             data["emotion"] = "neutral"
         data.setdefault("signals", {})
