@@ -1,9 +1,12 @@
 """
 AI 파이프라인 단독 검증 스크립트
-실행: cd server && python test_pipeline.py
-각 단계를 순서대로 테스트한다.
+실행: cd server && uv run python test_pipeline.py
+     cd server && uv run python test_pipeline.py engine   # 특정 단계만
+
+각 단계를 순서대로 테스트한다. engine 단계는 실제 Claude API 호출이라 ANTHROPIC_API_KEY 필요.
 """
 
+import asyncio
 import sys
 
 
@@ -51,9 +54,9 @@ def test_tts():
 
 
 def test_engine():
-    print("\n[4/4] engine.py 테스트 (Ollama 서버가 실행 중이어야 함)")
+    print("\n[4/4] engine.py 테스트 (Claude API 실호출 — ANTHROPIC_API_KEY 필요)")
     from chat.session import start_session
-    from chat.engine import chat
+    from chat.engine import chat  # async 함수
 
     sid = start_session("test_user")
 
@@ -63,19 +66,21 @@ def test_engine():
         ("손이 시려워", None),
     ]
 
-    for msg, expected_emotion in cases:
-        result = chat(msg, sid)
-        assert "reply" in result, "reply 키 없음"
-        assert "emotion" in result, "emotion 키 없음"
-        assert "signals" in result, "signals 키 없음"
-        assert result["emotion"] in {"happy", "worried", "excited", "sad", "neutral"}, \
-            f"잘못된 emotion: {result['emotion']}"
-        emotion_ok = "✓" if (expected_emotion is None or result["emotion"] == expected_emotion) else "△"
-        print(f"  {emotion_ok} 입력: {msg}")
-        print(f"     reply  : {result['reply']}")
-        print(f"     emotion: {result['emotion']} (예상: {expected_emotion or '무관'})")
-        print(f"     signals: {result['signals']}")
+    async def run_all():
+        for msg, expected_emotion in cases:
+            result = await chat(msg, sid)
+            assert "reply" in result, "reply 키 없음"
+            assert "emotion" in result, "emotion 키 없음"
+            assert "signals" in result, "signals 키 없음"
+            assert result["emotion"] in {"happy", "worried", "excited", "sad", "neutral"}, \
+                f"잘못된 emotion: {result['emotion']}"
+            emotion_ok = "✓" if (expected_emotion is None or result["emotion"] == expected_emotion) else "△"
+            print(f"  {emotion_ok} 입력: {msg}")
+            print(f"     reply  : {result['reply']}")
+            print(f"     emotion: {result['emotion']} (예상: {expected_emotion or '무관'})")
+            print(f"     signals: {result['signals']}")
 
+    asyncio.run(run_all())
     print("  OK — engine 멀티턴 정상")
 
 
