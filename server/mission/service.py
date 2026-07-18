@@ -1,8 +1,17 @@
+from fastapi import HTTPException
+
 from .data import MISSIONS
 
 
+def _get_steps(mission_id: str) -> list:
+    if mission_id not in MISSIONS:
+        raise HTTPException(status_code=404, detail=f"미션을 찾을 수 없습니다: {mission_id}")
+    return MISSIONS[mission_id]
+
+
 def start(mission_id: str) -> dict:
-    s = MISSIONS[mission_id][0]
+    steps = _get_steps(mission_id)
+    s = steps[0]
     return {
         "mission_id": mission_id,
         "step": s["step"],
@@ -13,7 +22,9 @@ def start(mission_id: str) -> dict:
 
 
 def handle_step(mission_id: str, current_step: int, action: str) -> dict:
-    steps = MISSIONS[mission_id]
+    steps = _get_steps(mission_id)
+    if current_step >= len(steps):
+        current_step = len(steps) - 1
     cur = steps[current_step]
     if action == cur["answer"]:
         if cur.get("final"):
