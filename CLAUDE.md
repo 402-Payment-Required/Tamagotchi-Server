@@ -153,10 +153,26 @@ mission_progress(id PK, user_id, mission_id, status, current_step, completed_at)
 ollama serve
 ollama pull exaone3.5:7.8b
 
-# 서버 실행
+# 서버 실행 (uv 사용)
 cd server
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uv sync
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## 패키지 관리 (uv)
+
+```bash
+# 패키지 추가
+uv add <패키지명>
+
+# 패키지 제거
+uv remove <패키지명>
+
+# 의존성 동기화
+uv sync
+
+# 스크립트 실행
+uv run python test_pipeline.py
 ```
 
 ## 하지 말 것

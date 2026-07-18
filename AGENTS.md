@@ -126,10 +126,21 @@ mission_progress(id PK, user_id, mission_id, status, current_step, completed_at)
 ollama serve
 ollama pull exaone3.5:7.8b
 
-# Run server
+# Run server (uv)
 cd server
-pip install -r requirements.txt
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+uv sync
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+# Run test pipeline
+uv run python test_pipeline.py
+```
+
+## Package management (uv)
+
+```bash
+uv add <package>     # add dependency
+uv remove <package>  # remove dependency
+uv sync              # install all dependencies
 ```
 
 ## Never do

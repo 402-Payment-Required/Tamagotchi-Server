@@ -1,0 +1,20 @@
+[project]
+name = "sonju-server"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "pydantic",
+    "python-dotenv",
+    "python-multipart",
+    "pytest",
+    "httpx",
+    "faster-whisper",
+    "ollama",
+    "melotts",
+]
+
+[tool.uv.sources]
+# melotts PyPI 설치 실패 시 아래 git 소스로 교체
+# melotts = { git = "https://github.com/myshell-ai/MeloTTS.git" }
