@@ -11,10 +11,10 @@ AI 손주와 **음성으로 대화**하고 **미션**을 수행하는 흐름을 
   (기존 Ollama exaone3.5 스택은 `feat/ai-pipeline` 브랜치에 유지)
 - TTS: [MeloTTS-Korean](https://github.com/myshell-ai/MeloTTS)
 
-## 빠른 실행
+## 빠른 실행 (Windows / macOS / Linux 공통)
 
 ```bash
-# 1. Claude API 키를 .env에 설정
+# 1. Claude API 키 설정 (.env는 자동 로드됨)
 cp server/.env.example server/.env
 # .env 편집 → ANTHROPIC_API_KEY=sk-ant-...
 
@@ -22,7 +22,7 @@ cp server/.env.example server/.env
 cd server
 uv sync
 
-# 3. (Windows만) MeCab-ko 사전 다운로드
+# 3. MeCab-ko 사전 다운로드 (전 플랫폼)
 uv run python -m unidic download
 
 # 4. 서버 실행
@@ -31,12 +31,18 @@ uv run uvicorn main:app --host 0.0.0.0 --port 8000
 
 Swagger UI: <http://localhost:8000/docs>
 
-## 개발용 (모델 없이 즉시 실행)
+### 플랫폼별 참고
+
+- **Windows**: `chat/__init__.py`가 MeCab/eunjeon 호환 shim을 자동 주입 (Visual C++ 빌드 없이도 g2pkk 동작)
+- **macOS / Linux**: 별도 셔임 불필요, `python-mecab-ko`가 정상 작동
+- **API 키가 없어도**: 서버는 정상 기동. `/voice/chat`/`/chat` 호출 시 fallback 응답(무음 WAV + 안내 문구) 반환
+
+## 개발용 (모델·API 키 없이 즉시 실행)
 
 ```bash
 cd server
-uv run python run_dev.py   # AI 모듈 Mock 주입, port 8000
-uv run python test_api.py  # 모든 HTTP 엔드포인트 검증 (19/19)
+uv run python run_dev.py   # STT/LLM/TTS 모두 Mock 주입, port 8000
+uv run python test_api.py  # HTTP 엔드포인트 검증 (19/19)
 ```
 
 ## API 요약
