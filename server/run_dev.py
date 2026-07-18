@@ -1,7 +1,20 @@
 """
 개발용 서버 (AI Mock 모드) — Ollama/모델 없이 즉시 실행
-실행: cd server && uv run python run_dev.py
-Swagger: http://localhost:8000/docs
+
+용도:
+    - 프론트 개발자가 백엔드 API 구조 확인/테스트할 때
+    - CI에서 라우팅·스키마 회귀 확인
+    - Ollama·Whisper·MeloTTS 다운로드 없이 API만 돌려볼 때
+
+Mock 동작:
+    STT  → 항상 "안녕하세요, 오늘 날씨가 참 좋네요." 반환
+    LLM  → 항상 happy·mood:good 응답
+    TTS  → 1초짜리 무음 WAV 반환
+
+실행:
+    cd server && uv run python run_dev.py
+Swagger:
+    http://localhost:8000/docs
 """
 import struct
 import sys
