@@ -7,14 +7,16 @@ AI 손주와 **음성으로 대화**하고 **미션**을 수행하는 흐름을 
 
 - Python 3.11 · FastAPI · uvicorn · SQLite
 - STT: [faster-whisper](https://github.com/SYSTRAN/faster-whisper) medium (CPU int8)
-- LLM: [Ollama](https://ollama.com/) exaone3.5:7.8b
+- LLM: Anthropic **Claude Haiku 4.5** (`claude-haiku-4-5`) — 이 브랜치 기준
+  (기존 Ollama exaone3.5 스택은 `feat/ai-pipeline` 브랜치에 유지)
 - TTS: [MeloTTS-Korean](https://github.com/myshell-ai/MeloTTS)
 
 ## 빠른 실행
 
 ```bash
-# 1. Ollama 설치 후 모델 pull
-ollama pull exaone3.5:7.8b
+# 1. Claude API 키를 .env에 설정
+cp server/.env.example server/.env
+# .env 편집 → ANTHROPIC_API_KEY=sk-ant-...
 
 # 2. 의존성 설치
 cd server
