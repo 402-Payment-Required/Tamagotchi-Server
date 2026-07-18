@@ -14,3 +14,7 @@ response.json
 
 # 로컬 리서치 문서
 research.md
+
+# Docker
+docker-compose.yml
+server/Dockerfile
