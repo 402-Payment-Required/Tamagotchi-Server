@@ -1,5 +1,6 @@
 import base64
 import logging
+import struct
 import uuid
 
 from fastapi import APIRouter, File, Form, UploadFile
@@ -8,6 +9,21 @@ from db import ensure_user, save_signals
 from schemas import VoiceChatResponse, VoiceEndRequest, VoiceEndResponse, VoiceStartRequest, VoiceStartResponse
 
 logger = logging.getLogger(__name__)
+
+
+def _silent_wav_b64() -> str:
+    # 프론트가 재생 실패하지 않도록 최소 유효 WAV (0.1초 무음, 16kHz mono 16bit)
+    num = 1600
+    ds = num * 2
+    buf = (
+        b"RIFF" + struct.pack("<I", 36 + ds) + b"WAVEfmt "
+        + struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16)
+        + b"data" + struct.pack("<I", ds) + b"\x00" * ds
+    )
+    return base64.b64encode(buf).decode()
+
+
+_SILENT_WAV_B64 = _silent_wav_b64()
 
 try:
     from chat.stt import transcribe
@@ -37,7 +53,7 @@ except ImportError:
 router = APIRouter(prefix="/voice")
 
 FALLBACK_RESPONSE = VoiceChatResponse(
-    audio="",
+    audio=_SILENT_WAV_B64,
     reply="지금은 대답하기 어려워요, 다시 한 번 말씀해 주시겠어요?",
     emotion="neutral",
     signals={},
@@ -46,8 +62,12 @@ FALLBACK_RESPONSE = VoiceChatResponse(
 
 @router.post("/start", response_model=VoiceStartResponse)
 def voice_start(body: VoiceStartRequest):
-    ensure_user(body.user_id)
-    session_id = start_session(body.user_id)
+    try:
+        ensure_user(body.user_id)
+        session_id = start_session(body.user_id)
+    except Exception:
+        logger.exception("voice_start 오류")
+        session_id = str(uuid.uuid4())
     return VoiceStartResponse(session_id=session_id)
 
 
