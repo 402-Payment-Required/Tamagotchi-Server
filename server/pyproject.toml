@@ -13,12 +13,7 @@ dependencies = [
     "pytest",
     "httpx",
     "faster-whisper",
-    "ollama",
-    "melotts",
+    "piper-tts",
     "setuptools<80",
     "python-mecab-ko>=1.3.7",
-    "anthropic>=0.117.0",
 ]
-
-[tool.uv.sources]
-melotts = { git = "https://github.com/myshell-ai/MeloTTS.git" }

@@ -22,28 +22,26 @@ _whisper_mock.WhisperModel.return_value.transcribe.return_value = (
 )
 sys.modules["faster_whisper"] = _whisper_mock
 
-_melo_api_mock = MagicMock()
-_tts_instance = MagicMock()
-_tts_instance.hps.data.spk2id = {"KR": 0}
-
-
-def _fake_tts_to_file(text, speaker_id, path, quiet=False):
+def _fake_piper_synthesize(text, wav_file):
     num_samples = 1600
     data_size = num_samples * 2
-    with open(path, "wb") as f:
-        f.write(b"RIFF")
-        f.write(struct.pack("<I", 36 + data_size))
-        f.write(b"WAVEfmt ")
-        f.write(struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16))
-        f.write(b"data")
-        f.write(struct.pack("<I", data_size))
-        f.write(b"\x00" * data_size)
+    wav_file.write(b"RIFF")
+    wav_file.write(struct.pack("<I", 36 + data_size))
+    wav_file.write(b"WAVEfmt ")
+    wav_file.write(struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16))
+    wav_file.write(b"data")
+    wav_file.write(struct.pack("<I", data_size))
+    wav_file.write(b"\x00" * data_size)
 
 
-_tts_instance.tts_to_file.side_effect = _fake_tts_to_file
-_melo_api_mock.TTS.return_value = _tts_instance
-sys.modules["melo"] = MagicMock()
-sys.modules["melo.api"] = _melo_api_mock
+_piper_voice_mock = MagicMock()
+_piper_voice_mock.synthesize.side_effect = _fake_piper_synthesize
+
+_piper_voice_module = MagicMock()
+_piper_voice_module.Voice.load.return_value = _piper_voice_mock
+
+sys.modules["piper"] = MagicMock()
+sys.modules["piper.voice"] = _piper_voice_module
 
 # ── AI 백엔드 mock: 실제 API 절대 호출 금지 ────────────────────────────────────
 # Ollama mock (현재 main의 engine.py)
