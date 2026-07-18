@@ -1,20 +1,37 @@
+# Python
 __pycache__/
 *.pyc
-.env
-*.db
-.venv/
-venv/
-.DS_Store
-.idea/
+*.pyo
+*.egg-info/
 
-# 테스트 산출물
+# 비밀
+.env
+
+# 데이터·산출물
+*.db
 *.wav
 test_tts_output.*
 response.json
 
-# 로컬 리서치 문서
-research.md
+# 가상환경
+.venv/
+venv/
 
-# Docker
+# 로컬 리서치·에디터 설정
+research.md
+.DS_Store
+.idea/
+.vscode/
+
+# 로그
+*.log
+logs/
+
+# 캐시
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Docker (로컬 오버라이드)
 docker-compose.yml
 server/Dockerfile

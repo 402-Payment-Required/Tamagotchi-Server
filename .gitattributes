@@ -1,0 +1,22 @@
+# 기본: 자동 감지, 리포는 LF로 저장 (Windows 체크아웃 시 CRLF로 변환됨 core.autocrlf 설정에 따라)
+* text=auto eol=lf
+
+# 텍스트 파일 명시적으로 LF
+*.py         text eol=lf
+*.md         text eol=lf
+*.toml       text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+*.json       text eol=lf
+*.lock       text eol=lf
+.env.example text eol=lf
+.gitignore   text eol=lf
+.gitattributes text eol=lf
+
+# 바이너리
+*.wav  binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.pdf  binary
+*.db   binary
