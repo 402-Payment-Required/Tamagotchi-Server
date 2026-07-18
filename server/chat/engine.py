@@ -18,8 +18,15 @@ FALLBACK = {
 }
 _JSON_RE = re.compile(r"\{.*\}", re.DOTALL)
 
-# ANTHROPIC_API_KEY 환경변수를 자동 사용
-_client = anthropic.Anthropic()
+# Lazy 초기화: API key가 없어도 import는 성공하도록. 첫 호출 시점에 생성.
+_client: anthropic.Anthropic | None = None
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic()  # ANTHROPIC_API_KEY 환경변수 자동 사용
+    return _client
 
 
 def _extract_json(raw: str) -> str:
@@ -34,7 +41,7 @@ def chat(message: str, session_id: str) -> dict:
 
     try:
         # cache_control은 프리픽스가 짧으면 no-op이지만 향후 프롬프트 확장 시 자동 캐싱되도록 유지
-        response = _client.messages.create(
+        response = _get_client().messages.create(
             model=MODEL,
             max_tokens=200,
             system=[{
